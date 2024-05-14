@@ -7,4 +7,9 @@ catboost
 xgboost
 dill
 Flask
+opendatasets
+plotly
+imblearn
+lightgbm
+optuna
 # -e .
