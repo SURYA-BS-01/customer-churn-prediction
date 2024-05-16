@@ -5,9 +5,10 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
-from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.preprocessing import FunctionTransformer
+from imblearn.over_sampling import SMOTE
 
 from src.exception import CustomException
 from src.logger import logging
@@ -20,7 +21,7 @@ class DataTransformationConfig:
 class DataTransformation:
     def __init__(self):
         self.data_transformation_config = DataTransformationConfig()
-
+    
     def get_transformer_object(self):
         '''
         This function is responsible for data transformation
@@ -49,8 +50,11 @@ class DataTransformation:
             num_pipeline = Pipeline(
                 steps= [("scaler", StandardScaler())]
             )
+
+            get_dummies_transformer = FunctionTransformer(lambda df: pd.get_dummies(df, columns=categorical_columns, drop_first=True), validate=False)
+
             cat_pipeline = Pipeline(
-                steps= [("onehotencoder", OneHotEncoder(handle_unknown='ignore'))]
+                steps= [("onehotencoder", get_dummies_transformer)]
             )
 
             preprocessor = ColumnTransformer(
@@ -75,24 +79,19 @@ class DataTransformation:
 
             preprocessor_obj = self.get_transformer_object()
 
-            target_column_name = "Churn Label"
+            train_df = preprocessor_obj.fit_transform(train_df)
+            test_df = preprocessor_obj.transform(test_df)
+
+            logging.info("Preprocessing done.")
+
+            train_df = pd.DataFrame(train_df)
+            test_df = pd.DataFrame(test_df)
+            X = pd.concat([train_df.iloc[:, :-1], test_df.iloc[:, :-1]])
+            y = pd.concat([train_df.iloc[:, -1], test_df.iloc[:, -1]])
             
-            input_feature_train_df = train_df.drop(target_column_name, axis=1)
-            target_feature_train_df = train_df[target_column_name]
-
-            input_feature_test_df = test_df.drop(target_column_name, axis=1)
-            target_feature_test_df = test_df[target_column_name]
-
-            logging.info(
-                "Applying preprocessing object on training dataframe and testing dataframe."
-            )
-
-            input_feature_train_arr = preprocessor_obj.fit_transform(input_feature_train_df)
-            input_feature_test_arr = preprocessor_obj.transform(input_feature_test_df)
-
-            train_arr = np.c_[input_feature_train_arr, np.array(target_feature_train_df)]
-
-            test_arr = np.c_[input_feature_test_arr, np.array(target_feature_test_df)]
+            logging.info("Applying SMOTE on training data.")
+            smote = SMOTE(sampling_strategy='minority')
+            X, y = smote.fit_resample(X, y)
 
             logging.info("Saved preprocessing object.")
 
@@ -102,8 +101,8 @@ class DataTransformation:
             )
 
             return (
-                train_arr,
-                test_arr,
+                X,
+                y,
                 self.data_transformation_config.preprocessor_obj_file_path
             )
 
