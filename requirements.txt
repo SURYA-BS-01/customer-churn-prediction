@@ -12,4 +12,5 @@ plotly
 imblearn
 lightgbm
 optuna
+gunicorn
 # -e .
