@@ -7,7 +7,6 @@ import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.preprocessing import FunctionTransformer
 from imblearn.over_sampling import SMOTE
 
 from src.exception import CustomException
@@ -51,10 +50,8 @@ class DataTransformation:
                 steps= [("scaler", StandardScaler())]
             )
 
-            get_dummies_transformer = FunctionTransformer(lambda df: pd.get_dummies(df, columns=categorical_columns, drop_first=True), validate=False)
-
             cat_pipeline = Pipeline(
-                steps= [("onehotencoder", get_dummies_transformer)]
+                steps= [("onehotencoder", OneHotEncoder(drop="first"))]
             )
 
             preprocessor = ColumnTransformer(
